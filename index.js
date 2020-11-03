@@ -1,148 +1,133 @@
-/*╔══════════════════════════════════════╗
-    Express
+/*╔═══════════════════════════════════════╗
+    ALL BOTS
   ╚═══════════════════════════════════════╝*/
-const http = require("http");
+const Discord = require("discord.js");
+const Prefix = "!";
+const client = new Discord.Client({
+  partials: ["MESSAGE", "CHANNEL", "REACTION"]
+, clientOptions: {
+        fetchAllMembers: true
+    },});
+const functions = require("./functions.js");
+const df = require("./dialogflow-functions.js");
+
+process.on("error", error => functions.Error(client, error));
+process.on("uncaughtException", error => functions.Error(client, error));
+process.on("unhandledRejection", error => functions.Error(client, error));
+
+client.once("ready", () => {
+  client.user.setActivity("the salt server 👀", {
+    url: "https://www.twitch.tv",
+    type: "WATCHING"
+  });
+  console.log("Ready!");
+});
+client.on("error", error => functions.Error(client, error));
+client.on("guildMemberAdd", member => {
+  try {
+    const text = require("./info/text.js");
+    setTimeout(function() {
+      member.send(text.Welcome1);
+      member.send(text.Welcome2);
+    }, 3000);
+  } catch (error) {
+    functions.error(client, error);
+  }
+});
+client.login(process.env.BOT);
+
 const express = require("express");
 const app = express();
 app.get("/", (request, response) => {
   response.sendStatus(200);
 });
 app.listen(process.env.PORT);
-/*╔═══════════════════════════════════════╗
-    Const
-  ╚═══════════════════════════════════════╝*/
-const Discord = require("discord.js"),
-  client = new Discord.Client({ partials: ["MESSAGE", "CHANNEL", "REACTION"] }),
-  fs = require("fs"),
-  emojiList = require("./info/emoji.json"),
-  prefix = "!";
-/*╔═══════════════════════════════════════╗
-    Bot
-  ╚═══════════════════════════════════════╝*/
-client.once("ready", () => {
-  console.log("Ready!");
-});
 
 /*╔═══════════════════════════════════════╗
-    Errors
+    Message
   ╚═══════════════════════════════════════╝*/
-process.on("error", error =>
-  client.users.cache
-    .get("338649491894829057")
-    .send("This is an error event:" + error.stack)
-);
-client.on("error", error =>
-  client.users.cache
-    .get("338649491894829057")
-    .send("This is an error event:" + error.stack)
-);
-process.on("uncaughtException", error =>
-  client.users.cache
-    .get("338649491894829057")
-    .send("This is an error event:" + error.stack)
-);
-process.on("unhandledRejection", error =>
-  client.users.cache
-    .get("338649491894829057")
-    .send("This is an error event:" + error.stack)
-);
 
 client.on("message", async message => {
-  return;
-  client.commands = new Discord.Collection();
-  const commandFiles = fs
-    .readdirSync("./commands")
-    .filter(file => file.endsWith(".js"));
-  for (const file of commandFiles) {
-    const command = require(`./commands/${file}`);
-    client.commands.set(command.name, command);
-  }
-  const args = message.content.slice(prefix.length).split(/ +/);
-  const command = args.shift().toLowerCase();
-  if (!client.commands.has(command)) return;
-  try {
-    if (command != "") {
-      client.commands.get(command).execute(message, args);
-    }
-  } catch (error) {
-    console.error(error);
-  }
-});
-/*╔═══════════════════════════════════════╗
-    Reaction Event
-  ╚═══════════════════════════════════════╝*/
-client.on("messageReactionAdd", async (reaction, user) => {
-  if (reaction.partial) {
-console.log("Reaction!")
-    try {
-      await reaction.fetch();
-    } catch (error) {
-      console.log("Something went wrong when fetching the message: ", error);
-      return;
-    }
-  }
-  const emojiId = reaction.emoji.id.toString();
-  if (!user.bot && reaction.message.id === "546262541370654720") {
-    console.log(emojiId)
+  if (!message.author.bot) {
+    /*┌───────────────────────────┐
+        Mentions
+      └───────────────────────────┘ */
+    const News = ["nada", "na_da"];
     if (
-      emojiList.hasOwnProperty(emojiId) ||
-      emojiList.hasOwnProperty(reaction.emoji.name)
+      News.includes(message.content.toLowerCase()) &&
+      !message.author.bot &&
+      !message.content.toLowerCase().includes("canada")
     ) {
-console.log("Role found")
-      reaction.message.guild.member(user).roles.add(emojiList[emojiId].role);
-    }
-  }
-});
-client.on("messageReactionRemove", async (reaction, user) => {
-  if (reaction.partial) {
-    try {
-      await reaction.fetch();
-    } catch (error) {
-      console.log("Something went wrong when fetching the message: ", error);
-      return;
-    }
-  }
-  const emojiId = reaction.emoji.id.toString();
-  if (!user.bot && reaction.message.id === "546262541370654720") {
-  
-    if (
-      emojiList.hasOwnProperty(emojiId) ||
-      emojiList.hasOwnProperty(reaction.emoji.name)
+      functions.Mention(client, message, "338649491894829057");
+    } else if (
+      message.content.toLowerCase().includes("sendo") &&
+      !message.author.bot &&
+      message.guild.id != "632570524463136779"
     ) {
-      reaction.message.guild.member(user).roles.remove(emojiList[emojiId].role);
-    }
-  }
-});
-
-/*╔═══════════════════════════════════════╗
-    Deleted Messages
-  ╚═══════════════════════════════════════╝*/
-client.on("messageDelete", async message => {
-  const entry = await message.guild
-    .fetchAuditLogs({ type: "MESSAGE_DELETE" })
-    .then(audit => audit.entries.first());
-  let user = "";
-  if (
-    entry.extra.channel.id === message.channel.id &&
-    entry.target.id === message.author.id &&
-    entry.createdTimestamp > Date.now() - 5000 &&
-    entry.extra.count >= 1
-  ) {
-    user = entry.executor.username;
-  } else {
-    user = message.author.username;
-  }
-  const delmsg = {
-    embed: {
-      color: 1,
-      description: `${message.content}`,
-      timestamp: "",
-      author: {
-        name: `${user} deleted a message from ${message.author.username} in #${message.channel.name}`
+      functions.Mention(client, message, "119095000050040832");
+    } else if (
+    /*╔═══════════════════════════════════════╗
+        Dialogflow
+      ╚═══════════════════════════════════════╝*/
+    /*┌───────────────────────────┐
+        DM
+      └───────────────────────────┘ */
+      message.channel.type == "dm" &&
+      client.user.id != message.author.id &&
+      !message.content.startsWith(Prefix)
+    ) {
+      const df = require("./dialogflow-functions.js");
+      const answer = await functions.DialogflowQuery(
+        message,
+        message.cleanContent
+      );
+      if (answer.intent === "Scrimmer"){
+        message.reply("Yeah uhm no. You can't do this in a direct message.")
       }
-    }
-  };
-
-  client.channels.cache.get("718176504437276682").send(delmsg);
+      else {
+      df.Function(client, answer, message);
+      }
+    } else if (
+    /*┌───────────────────────────┐
+        Public
+      └───────────────────────────┘ */
+      (message.content.includes("@!" + client.user.id) ||
+        message.cleanContent.startsWith(client.user.username + " ") ||
+        message.cleanContent.startsWith(
+          client.user.username.toLowerCase() + " "
+        )) &&
+      client.user.id != message.author.id
+    ) {
+      const answer = await functions.DialogflowQuery(
+        message,
+        message.cleanContent
+          .split(" ")
+          .slice(1)
+          .join(" ")
+      );
+      //--- Role Assignment ---
+      const euServerList = ["lft", "Scrimmer", "Climbey"];
+      const roleList = require("./info/roles.js");
+      if (euServerList.includes(answer.intent)) {
+        message.guild
+          .member(message.author.id)
+          .roles.add(roleList.get(answer.intent));
+        message.reply(answer.response);
+      } else if (answer.intent.substring(0, 6) === "remove") {
+        const roleString = answer.intent.substring(7);
+        message.guild
+          .member(message.author.id)
+          .roles.remove(roleList.get(roleString));
+        message.reply(answer.response);
+        //--- Default ---
+      } else {
+        df.Function(client, answer, message);
+      }
+    } else if (!message.content.startsWith(Prefix) || message.author.bot)
+    /*╔═══════════════════════════════════════╗
+          Commands
+        ╚═══════════════════════════════════════╝*/
+      return;
+    functions.Command(client, message, Prefix);
+  }
 });
-client.login(process.env.BOT);
